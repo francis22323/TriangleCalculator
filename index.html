@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TrigonoCalc</title>
+  <style>
+    body {
+      background-color: #f3f4f6;
+      font-family: sans-serif;
+      padding: 3rem 1rem;
+    }
+    .container {
+      max-width: 400px;
+      margin: auto;
+      background-color: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    input, select {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 0.5rem;
+    }
+    button {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      margin-bottom: 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      background-color: #3b82f6;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #2563eb;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+    .results {
+      margin-top: 1rem;
+      background-color: #f9fafb;
+      padding: 1rem;
+      border-radius: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>TrigonoCalc</h1>
+
+    <label>Tipo de cálculo</label>
+    <select id="typeSelector">
+      <option value="LAA">Lado - Ángulo - Ángulo</option>
+      <option value="LLA">Lado - Lado - Ángulo</option>
+      <option value="LAL">Lado - Ángulo - Lado</option>
+    </select>
+
+    <form id="triangleForm">
+      <div id="inputsContainer"></div>
+      <button type="submit">Calcular</button>
+    </form>
+
+    <div id="resultsContainer" class="results" style="display: none;"></div>
+  </div>
+
+  <script>
+    const typeSelector = document.getElementById('typeSelector');
+    const form = document.getElementById('triangleForm');
+    const inputsContainer = document.getElementById('inputsContainer');
+    const resultsContainer = document.getElementById('resultsContainer');
+
+    let calculationType = 'LAA';
+
+    const inputTemplates = {
+      LAA: ['sideA', 'angleB', 'angleC'],
+      LLA: ['sideA', 'sideB', 'angleA'],
+      LAL: ['sideA', 'sideB', 'angleB']
+    };
+
+    const labels = {
+      sideA: 'Lado A',
+      sideB: 'Lado B',
+      sideC: 'Lado C',
+      angleA: 'Ángulo A (°)',
+      angleB: 'Ángulo B (°)',
+      angleC: 'Ángulo C (°)'
+    };
+
+    function renderInputs() {
+      inputsContainer.innerHTML = '';
+      inputTemplates[calculationType].forEach((key) => {
+        const label = document.createElement('label');
+        label.textContent = labels[key];
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.name = key;
+        input.step = 'any';
+        input.required = true;
+
+        inputsContainer.appendChild(label);
+        inputsContainer.appendChild(input);
+      });
+    }
+
+    function calculate(values) {
+      const results = { ...values };
+
+      const toRad = deg => deg * (Math.PI / 180);
+      const toDeg = rad => rad * (180 / Math.PI);
+
+      if (calculationType === 'LAA') {
+        results.angleA = 180 - values.angleB - values.angleC;
+        const angleARad = toRad(results.angleA);
+        const angleBRad = toRad(values.angleB);
+        const angleCRad = toRad(values.angleC);
+
+        results.sideB = (values.sideA * Math.sin(angleBRad)) / Math.sin(angleARad);
+        results.sideC = (values.sideA * Math.sin(angleCRad)) / Math.sin(angleARad);
+      } else if (calculationType === 'LLA') {
+        const angleARad = toRad(values.angleA);
+        results.sideC = Math.sqrt(
+          values.sideA ** 2 + values.sideB ** 2 -
+          2 * values.sideA * values.sideB * Math.cos(angleARad)
+        );
+        const angleBRad = Math.asin((values.sideB * Math.sin(angleARad)) / results.sideC);
+        results.angleB = toDeg(angleBRad);
+        results.angleC = 180 - values.angleA - results.angleB;
+      } else if (calculationType === 'LAL') {
+        const angleBRad = toRad(values.angleB);
+        results.sideC = Math.sqrt(
+          values.sideA ** 2 + values.sideB ** 2 -
+          2 * values.sideA * values.sideB * Math.cos(angleBRad)
+        );
+        const angleARad = Math.asin((values.sideA * Math.sin(angleBRad)) / results.sideC);
+        results.angleA = toDeg(angleARad);
+        results.angleC = 180 - results.angleA - values.angleB;
+      }
+
+      return results;
+    }
+
+    function displayResults(results) {
+      resultsContainer.innerHTML = `
+        <strong>Resultados:</strong><br/>
+        Lado A: ${results.sideA?.toFixed(2)}<br/>
+        Lado B: ${results.sideB?.toFixed(2)}<br/>
+        Lado C: ${results.sideC?.toFixed(2)}<br/>
+        Ángulo A: ${results.angleA?.toFixed(2)}°<br/>
+        Ángulo B: ${results.angleB?.toFixed(2)}°<br/>
+        Ángulo C: ${results.angleC?.toFixed(2)}°
+      `;
+      resultsContainer.style.display = 'block';
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const values = {};
+
+      for (let [key, value] of formData.entries()) {
+        values[key] = parseFloat(value);
+      }
+
+      const results = calculate(values);
+      displayResults(results);
+    });
+
+    typeSelector.addEventListener('change', (e) => {
+      calculationType = e.target.value;
+      renderInputs();
+      resultsContainer.style.display = 'none';
+    });
+
+    renderInputs();
+  </script>
+</body>
+</html>
